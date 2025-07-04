@@ -1,3 +1,10 @@
+// Declare submodules
+mod blob;
+mod commit;
+mod hash;
+mod path;
+mod tree;
+
 use anyhow::{anyhow, Context, Result};
 use flate2::read::ZlibDecoder;
 use flate2::write::ZlibEncoder;
@@ -8,14 +15,9 @@ use std::io::{Read, Write};
 use std::path::Path;
 use std::str::FromStr;
 
-// Declare submodules
-mod blob;
-mod hash;
-mod path;
-mod tree;
-
 // Re-export public items
 pub use blob::create_blob_object;
+pub use commit::create_commit_object;
 pub use hash::{calculate_object_hash, hex_to_bytes, validate_sha1};
 pub use path::git_object_path;
 pub use tree::{display_tree_entries, parse_tree_entries, write_tree};

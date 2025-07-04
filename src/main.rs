@@ -22,10 +22,7 @@ enum Command {
         #[arg(short = 'p', help = "Pretty-print the contents of the object")]
         pretty_print: bool,
         /// The SHA-1 hash of the object to display
-        #[arg(
-            help = "The SHA-1 hash of the object to display",
-            value_name = "object-hash"
-        )]
+        #[arg(help = "The SHA-1 hash of the object to display")]
         object_hash: String,
     },
     /// Compute object ID and optionally create an object from a file
@@ -34,12 +31,12 @@ enum Command {
         #[arg(short = 'w', help = "Write the object into the object database")]
         write: bool,
         /// Path to the file to hash
-        #[arg(help = "Path to the file to hash", value_name = "file-path")]
+        #[arg(help = "Path to the file to hash")]
         file_path: PathBuf,
     },
     /// List the contents of a tree object
     LsTree {
-        #[arg(help = "The hash of the tree to inspect", value_name = "tree-sha")]
+        #[arg(help = "The hash of the tree to inspect")]
         tree_sha: String,
         #[arg(
             long = "name-only",
@@ -48,7 +45,16 @@ enum Command {
         name_only: bool,
     },
     /// Create a tree object from the current directory
-    WriteTree {},
+    WriteTree,
+    /// Create a commit object
+    CommitTree {
+        #[arg(help = "The hash of the tree to commit")]
+        tree_sha: String,
+        #[arg(short = 'p', help = "The hash of the parent commit")]
+        parent_sha: Option<String>,
+        #[arg(short = 'm', value_name = "MESSAGE", help = "The commit message")]
+        message: String,
+    },
 }
 
 fn main() -> Result<()> {
@@ -72,8 +78,15 @@ fn main() -> Result<()> {
         } => {
             commands::ls_tree::run(tree_sha, name_only)?;
         }
-        Command::WriteTree {} => {
+        Command::WriteTree => {
             commands::write_tree::run()?;
+        }
+        Command::CommitTree {
+            tree_sha,
+            parent_sha,
+            message,
+        } => {
+            commands::commit_tree::run(tree_sha, parent_sha, message)?;
         }
     }
     Ok(())
