@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use flate2::read::ZlibDecoder;
 use flate2::write::ZlibEncoder;
 use flate2::Compression;
@@ -14,12 +14,66 @@ mod tree;
 
 // Re-export public items
 pub use blob::create_blob_object;
-pub use hash::{calculate_object_hash, calculate_sha1};
+pub use hash::{calculate_object_hash, hex_to_bytes, validate_sha1};
 pub use path::git_object_path;
-pub use tree::{display_tree_entries, parse_tree_entries};
+pub use tree::{display_tree_entries, parse_tree_entries, write_tree};
+
+#[derive(Debug, Clone)]
+pub enum GitObjectType {
+    Blob,
+    Tree,
+}
+
+impl GitObjectType {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            GitObjectType::Blob => "blob",
+            GitObjectType::Tree => "tree",
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum FileMode {
+    RegularFile,    // 100644
+    ExecutableFile, // 100755
+    SymbolicLink,   // 120000
+    Directory,      // 40000
+}
+
+impl FileMode {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            FileMode::RegularFile => "100644",
+            FileMode::ExecutableFile => "100755",
+            FileMode::SymbolicLink => "120000",
+            FileMode::Directory => "40000",
+        }
+    }
+
+    pub fn from_str(mode: &str) -> Result<Self> {
+        match mode {
+            "100644" => Ok(FileMode::RegularFile),
+            "100755" => Ok(FileMode::ExecutableFile),
+            "120000" => Ok(FileMode::SymbolicLink),
+            "40000" => Ok(FileMode::Directory),
+            _ => Err(anyhow!("Unknown file mode: {}", mode)),
+        }
+    }
+
+    pub fn to_object_type(&self) -> GitObjectType {
+        match self {
+            FileMode::RegularFile | FileMode::ExecutableFile | FileMode::SymbolicLink => {
+                GitObjectType::Blob
+            }
+            FileMode::Directory => GitObjectType::Tree,
+        }
+    }
+}
 
 /// Reads and decompresses a Git object from its hash
 pub fn read_git_object(object_hash: &str) -> Result<Vec<u8>> {
+    validate_sha1(object_hash)?;
     let file_path = git_object_path(object_hash);
     let bytes = fs::read(&file_path)
         .with_context(|| format!("Failed to read object file: {}", file_path.display()))?;
@@ -36,7 +90,7 @@ pub fn read_git_object(object_hash: &str) -> Result<Vec<u8>> {
 /// Compresses and writes a Git object, returns the hash
 pub fn write_git_object(content: &[u8]) -> Result<String> {
     // Calculate the hash
-    let hash_hex = calculate_sha1(content);
+    let hash_hex = calculate_object_hash(content);
 
     // Compress the content
     let mut encoder = ZlibEncoder::new(Vec::new(), Compression::default());

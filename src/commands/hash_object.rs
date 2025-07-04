@@ -15,7 +15,7 @@ pub fn run(write: bool, file_path: PathBuf) -> Result<()> {
     } else {
         git_objects::calculate_object_hash(&object_content)
     };
-    println!("{}", hash_hex);
+    println!("{hash_hex}");
 
     Ok(())
 }
