@@ -59,7 +59,7 @@ pub fn parse_tree_entries(content: &[u8]) -> Result<Vec<TreeEntry>> {
             .collect::<String>();
         pos += SHA1_BYTES;
 
-        let mode = FileMode::from_str(mode_str)?;
+        let mode = mode_str.parse::<FileMode>()?;
         let object_type = mode.to_object_type();
 
         entries.push(TreeEntry {
@@ -81,10 +81,7 @@ pub fn display_tree_entries(entries: &[TreeEntry], name_only: bool) {
         } else {
             println!(
                 "{} {} {}\t{}",
-                entry.mode.as_str(),
-                entry.object_type.as_str(),
-                entry.sha1,
-                entry.name
+                entry.mode, entry.object_type, entry.sha1, entry.name
             );
         }
     }
@@ -148,7 +145,7 @@ fn build_tree_content(entries: &[(FileMode, String, String)]) -> Result<Vec<u8>>
     // Calculate total size first
     let mut size = 0;
     for (mode, name, _) in entries {
-        size += mode.as_str().len() + 1 + name.len() + 1 + SHA1_BYTES; // mode + space + name + null + 20 bytes hash
+        size += mode.to_string().len() + 1 + name.len() + 1 + SHA1_BYTES; // mode + space + name + null + 20 bytes hash
     }
 
     // Add header
@@ -157,7 +154,7 @@ fn build_tree_content(entries: &[(FileMode, String, String)]) -> Result<Vec<u8>>
 
     // Add entries
     for (mode, name, hash) in entries {
-        content.extend_from_slice(mode.as_str().as_bytes());
+        content.extend_from_slice(mode.to_string().as_bytes());
         content.push(b' ');
         content.extend_from_slice(name.as_bytes());
         content.push(0); // null byte

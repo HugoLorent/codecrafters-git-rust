@@ -2,9 +2,11 @@ use anyhow::{anyhow, Context, Result};
 use flate2::read::ZlibDecoder;
 use flate2::write::ZlibEncoder;
 use flate2::Compression;
+use std::fmt;
 use std::fs;
 use std::io::{Read, Write};
 use std::path::Path;
+use std::str::FromStr;
 
 // Declare submodules
 mod blob;
@@ -24,11 +26,11 @@ pub enum GitObjectType {
     Tree,
 }
 
-impl GitObjectType {
-    pub fn as_str(&self) -> &'static str {
+impl fmt::Display for GitObjectType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            GitObjectType::Blob => "blob",
-            GitObjectType::Tree => "tree",
+            GitObjectType::Blob => write!(f, "blob"),
+            GitObjectType::Tree => write!(f, "tree"),
         }
     }
 }
@@ -41,26 +43,32 @@ pub enum FileMode {
     Directory,      // 40000
 }
 
-impl FileMode {
-    pub fn as_str(&self) -> &'static str {
+impl fmt::Display for FileMode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            FileMode::RegularFile => "100644",
-            FileMode::ExecutableFile => "100755",
-            FileMode::SymbolicLink => "120000",
-            FileMode::Directory => "40000",
+            FileMode::RegularFile => write!(f, "100644"),
+            FileMode::ExecutableFile => write!(f, "100755"),
+            FileMode::SymbolicLink => write!(f, "120000"),
+            FileMode::Directory => write!(f, "40000"),
         }
     }
+}
 
-    pub fn from_str(mode: &str) -> Result<Self> {
-        match mode {
+impl FromStr for FileMode {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
             "100644" => Ok(FileMode::RegularFile),
             "100755" => Ok(FileMode::ExecutableFile),
             "120000" => Ok(FileMode::SymbolicLink),
             "40000" => Ok(FileMode::Directory),
-            _ => Err(anyhow!("Unknown file mode: {}", mode)),
+            _ => Err(anyhow!("Unknown file mode: {}", s)),
         }
     }
+}
 
+impl FileMode {
     pub fn to_object_type(&self) -> GitObjectType {
         match self {
             FileMode::RegularFile | FileMode::ExecutableFile | FileMode::SymbolicLink => {
